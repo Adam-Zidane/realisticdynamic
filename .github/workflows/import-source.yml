@@ -1,10 +1,11 @@
+
 name: Import Realistic Dynamic source
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - RealisticDynamic-1.0.0-source.zip
+      - RealisticDynamic-ZidaneAdam-1.1.0-source.zip
 
 permissions:
   contents: write
@@ -27,24 +28,25 @@ jobs:
         run: |
           set -e
 
-          test -f RealisticDynamic-1.0.0-source.zip
+          test -f RealisticDynamic-ZidaneAdam-1.1.0-source.zip
 
-          rm -rf /tmp/RealisticDynamic
-          mkdir -p /tmp/RealisticDynamic
+          rm -rf /tmp/rd-source
+          mkdir -p /tmp/rd-source
 
-          unzip -oq RealisticDynamic-1.0.0-source.zip -d /tmp/RealisticDynamic
+          unzip -oq RealisticDynamic-ZidaneAdam-1.1.0-source.zip -d /tmp/rd-source
 
-          test -f /tmp/RealisticDynamic/RealisticDynamic/Tweak.xm
+          test -f /tmp/rd-source/Tweak.m
+          test -f /tmp/rd-source/Makefile
 
-      - name: Import Realistic Dynamic source
+      - name: Import project files
         run: |
           set -e
 
           rsync -a \
             --exclude='.github/' \
-            /tmp/RealisticDynamic/RealisticDynamic/ ./
+            /tmp/rd-source/ ./
 
-          rm -f RealisticDynamic-1.0.0-source.zip
+          rm -f RealisticDynamic-ZidaneAdam-1.1.0-source.zip
 
       - name: Commit and push imported source
         run: |
@@ -60,7 +62,7 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Import Realistic Dynamic source"
+          git commit -m "Import Realistic Dynamic 1.1.0 source"
 
           git fetch origin main
           git rebase origin/main
