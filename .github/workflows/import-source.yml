@@ -4,25 +4,52 @@ on:
   push:
     paths:
       - RealisticDynamic-1.0.0-source.zip
+  workflow_dispatch:
 
 permissions:
   contents: write
+
+concurrency:
+  group: realisticdynamic-import-main
+  cancel-in-progress: false
 
 jobs:
   import:
     runs-on: ubuntu-latest
 
     steps:
-      - uses: actions/checkout@v4
+      - name: Checkout latest repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          persist-credentials: true
 
-      - name: Extract project files
+      - name: Synchronize with latest main
         run: |
-          mkdir -p /tmp/rd-source
-          unzip -oq RealisticDynamic-1.0.0-source.zip -d /tmp/rd-source
-          rsync -a --exclude='.github/' /tmp/rd-source/RealisticDynamic/ ./
+          git fetch origin main
+          git checkout main
+          git reset --hard origin/main
+
+      - name: Extract source archive
+        run: |
+          test -f RealisticDynamic-1.0.0-source.zip
+
+          mkdir -p /tmp/realisticdynamic-source
+
+          unzip -oq RealisticDynamic-1.0.0-source.zip \
+            -d /tmp/realisticdynamic-source
+
+          test -f /tmp/realisticdynamic-source/RealisticDynamic/Tweak.xm
+
+      - name: Import source files
+        run: |
+          rsync -a \
+            --exclude='.github/' \
+            /tmp/realisticdynamic-source/RealisticDynamic/ ./
+
           rm -f RealisticDynamic-1.0.0-source.zip
 
-            - name: Commit imported project
+      - name: Commit imported project
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+users.noreply.github.com"
@@ -30,18 +57,10 @@ jobs:
           git add -A
 
           if git diff --cached --quiet; then
-            echo "No changes to commit"
+            echo "No changes to commit."
             exit 0
           fi
 
           git commit -m "Import Realistic Dynamic source"
 
-          git fetch origin main
-          git rebase origin/main
-
           git push origin HEAD:main
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
-          git add -A
-          git commit -m "Import Realistic Dynamic source" || exit 0
-          git push
