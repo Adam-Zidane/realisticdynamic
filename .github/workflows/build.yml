@@ -1,25 +1,57 @@
-name: build
-on: workflow_dispatch
+name: Build Realistic Dynamic
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - 'RealisticDynamic/**'
+      - '.github/workflows/build.yml'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: realisticdynamic-build
+  cancel-in-progress: true
+
 jobs:
   build:
-    runs-on: macos-15-intel
+    runs-on: macos-15
     steps:
-      - uses: actions/checkout@v4
-      - name: Tools
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install build tools
         run: brew install ldid make dpkg xz
-      - name: Theos
+
+      - name: Install Theos
+        shell: bash
         run: |
-          set -e
-          rm -rf "$HOME/theos"
+          set -euo pipefail
           git clone --recursive --depth=1 https://github.com/theos/theos.git "$HOME/theos"
           if [ -z "$(ls -A "$HOME/theos/sdks" 2>/dev/null)" ]; then
             rm -rf "$HOME/theos/sdks"
             git clone --depth=1 https://github.com/theos/sdks.git "$HOME/theos/sdks"
           fi
           echo "THEOS=$HOME/theos" >> "$GITHUB_ENV"
-      - name: Build
+
+      - name: Build rootless package
+        working-directory: RealisticDynamic
         run: gmake package FINALPACKAGE=1 THEOS_PACKAGE_SCHEME=rootless
-      - uses: actions/upload-artifact@v4
+
+      - name: Verify Debian package
+        working-directory: RealisticDynamic
+        run: |
+          set -e
+          pkg="$(find packages -maxdepth 1 -name '*.deb' -print -quit)"
+          test -n "$pkg"
+          dpkg-deb --info "$pkg"
+          dpkg-deb --contents "$pkg"
+
+      - name: Upload Debian package
+        uses: actions/upload-artifact@v4
         with:
-          name: Island-deb
-          path: packages/*.deb
+          name: RealisticDynamic-rootless-deb
+          path: RealisticDynamic/packages/*.deb
+          if-no-files-found: error
+          retention-days: 14

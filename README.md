@@ -55,3 +55,20 @@ If SpringBoard becomes unstable, create `/var/mobile/realisticdynamic_off` using
 ## Reference research
 
 The supplied DynamicSeth and DynamicIslandPill packages were inspected for their preference surfaces and readable feature strings. Their compiled binaries are not included in this project and their private source implementation was not available. Realistic Dynamic implements its own UI and event handling; it does not bundle their binaries.
+
+
+## Repository layout and build
+
+The Theos project lives in `RealisticDynamic/`. The active tweak source is
+`RealisticDynamic/Tweak.m`; the root-level `Tweak.xm` and `Legacy-Tweak.xm`
+are retained only as legacy reference files and are not compiled.
+
+The GitHub Actions build workflow explicitly runs Theos from `RealisticDynamic/`
+and uploads the rootless `.deb` as `RealisticDynamic-rootless-deb`.
+
+
+## Build workflow note
+
+The build workflow now runs from `RealisticDynamic/`, where the 1.1.0 Theos
+project and active `Tweak.m` live. Root-level `Tweak.xm` and `Legacy-Tweak.xm`
+are archival copies and are not part of the package build.
