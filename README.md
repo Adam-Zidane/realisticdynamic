@@ -1,6 +1,7 @@
 # Realistic Dynamic
 
 **Author:** Zidane Adam  
+**Version:** `1.3.0`  
 **Package:** `com.zidaneadam.realisticdynamic`  
 **Target:** Rootless Dopamine-compatible jailbreaks, iOS 15.0+, arm64
 
