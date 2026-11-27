@@ -1,11 +1,12 @@
 
-name: Import Realistic Dynamic source
+name: Import Realistic Dynamic Repository
 
 on:
   workflow_dispatch:
+
   push:
     paths:
-      - RealisticDynamic-ZidaneAdam-1.1.0-source.zip
+      - RealisticDynamic-1.1.0-restructured-source.zip
 
 permissions:
   contents: write
@@ -24,36 +25,80 @@ jobs:
         with:
           fetch-depth: 0
 
+      - name: Prepare environment
+        run: |
+          set -euo pipefail
+
+          sudo apt-get update
+          sudo apt-get install -y unzip rsync
+
       - name: Extract source archive
         run: |
-          set -e
+          set -euo pipefail
 
-          test -f RealisticDynamic-ZidaneAdam-1.1.0-source.zip
+          ARCHIVE="RealisticDynamic-1.1.0-restructured-source.zip"
 
-          rm -rf /tmp/rd-source
-          mkdir -p /tmp/rd-source
+          if [ ! -f "$ARCHIVE" ]; then
+            echo "::error::Source ZIP not found: $ARCHIVE"
+            exit 1
+          fi
 
-          unzip -oq RealisticDynamic-ZidaneAdam-1.1.0-source.zip -d /tmp/rd-source
+          rm -rf /tmp/rd-import
+          mkdir -p /tmp/rd-import
 
-          test -f /tmp/rd-source/Tweak.m
-          test -f /tmp/rd-source/Makefile
+          unzip -oq "$ARCHIVE" -d /tmp/rd-import
+
+          SOURCE="/tmp/rd-import/realisticdynamic-main"
+
+          test -f "$SOURCE/RealisticDynamic/Tweak.m"
+          test -f "$SOURCE/RealisticDynamic/Makefile"
+          test -f "$SOURCE/RealisticDynamic/control"
+          test -f "$SOURCE/.github/workflows/build.yml"
+
+          echo "Source archive verified successfully."
 
       - name: Import project files
         run: |
-          set -e
+          set -euo pipefail
 
+          SOURCE="/tmp/rd-import/realisticdynamic-main"
+
+          # Import project without deleting unrelated repository files.
           rsync -a \
+            --exclude='.git/' \
             --exclude='.github/' \
-            /tmp/rd-source/ ./
+            "$SOURCE/" ./
 
-          rm -f RealisticDynamic-ZidaneAdam-1.1.0-source.zip
+          # Update build workflow but preserve the running import workflow.
+          mkdir -p .github/workflows
 
-      - name: Commit and push imported source
+          cp \
+            "$SOURCE/.github/workflows/build.yml" \
+            .github/workflows/build.yml
+
+          # Remove uploaded ZIP after successful extraction.
+          rm -f RealisticDynamic-1.1.0-restructured-source.zip
+
+      - name: Verify imported project
         run: |
-          set -e
+          set -euo pipefail
+
+          test -f RealisticDynamic/Tweak.m
+          test -f RealisticDynamic/Makefile
+          test -f RealisticDynamic/control
+
+          test -f .github/workflows/build.yml
+          test -f .github/workflows/import-source.yml
+
+          echo "Realistic Dynamic source imported successfully."
+
+      - name: Commit and push changes
+        run: |
+          set -euo pipefail
 
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git config user.email \
+            "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add -A
 
@@ -62,9 +107,14 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Import Realistic Dynamic 1.1.0 source"
+          git commit -m "Import Realistic Dynamic restructured source"
 
           git fetch origin main
           git rebase origin/main
 
           git push origin HEAD:main
+
+      - name: Import completed
+        run: |
+          echo "Realistic Dynamic repository import completed."
+          echo "The build workflow is ready."
