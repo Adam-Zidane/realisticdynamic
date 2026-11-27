@@ -1,3 +1,4 @@
+
 TARGET := iphone:clang:latest:15.0
 ARCHS := arm64
 
@@ -29,8 +30,11 @@ BUNDLE_NAME := RealisticDynamicPrefs
 
 RealisticDynamicPrefs_FILES := RootListController.m
 
+# IMPORTANT:
+# Do not link Preferences.framework.
+# PSListController is resolved dynamically at runtime.
+
 RealisticDynamicPrefs_FRAMEWORKS := UIKit
-RealisticDynamicPrefs_PRIVATE_FRAMEWORKS := Preferences
 
 RealisticDynamicPrefs_INSTALL_PATH := /Library/PreferenceBundles
 
