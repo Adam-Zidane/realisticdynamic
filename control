@@ -1,0 +1,10 @@
+Package: com.zidaneadam.island
+Name: Island
+Version: 0.2.0
+Architecture: iphoneos-arm64
+Description: A Dynamic Island style live pill for notch-less iPhones: music, charging, notifications, ringer, low power
+Maintainer: Zidane Adam
+Author: Zidane Adam
+Section: Tweaks
+Depends: mobilesubstrate, preferenceloader, firmware (>= 15.0)
+Conflicts: com.nekojb.dynamicislandpill
