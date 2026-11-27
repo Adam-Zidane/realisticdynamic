@@ -1,11 +1,11 @@
-# Optional helper for people uploading from GitHub's web interface.
-# First create .github/workflows/import-source.yml in your repository and paste this file.
-# Then upload RealisticDynamic-1.0.0-source.zip to the repository root.
+# Optional helper for importing the source ZIP from GitHub's web interface.
+# First add this file to your repository as .github/workflows/import-source.yml and commit it.
+# Then upload RealisticDynamic-ZidaneAdam-1.1.0-source.zip to the repository root.
 name: Import Realistic Dynamic source
 on:
   push:
     paths:
-      - RealisticDynamic-1.0.0-source.zip
+      - RealisticDynamic-ZidaneAdam-1.1.0-source.zip
 permissions:
   contents: write
 jobs:
@@ -13,16 +13,20 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
       - name: Extract project files
         run: |
+          set -e
           mkdir -p /tmp/rd-source
-          unzip -oq RealisticDynamic-1.0.0-source.zip -d /tmp/rd-source
-          cp -R /tmp/rd-source/RealisticDynamic/. .
-          rm -f RealisticDynamic-1.0.0-source.zip
+          unzip -oq RealisticDynamic-ZidaneAdam-1.1.0-source.zip -d /tmp/rd-source
+          test -f /tmp/rd-source/Tweak.m
+          rsync -a --exclude='.github/' /tmp/rd-source/ ./
+          rm -f RealisticDynamic-ZidaneAdam-1.1.0-source.zip
       - name: Commit imported project
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add -A
-          git commit -m "Import Realistic Dynamic source" || exit 0
+          git commit -m "Import Realistic Dynamic 1.1.0 source" || exit 0
           git push

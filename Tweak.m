@@ -1,11 +1,14 @@
-// Island v0.2.0 - a Dynamic Island style live pill for notch-less iPhones.
-// Author: Zidane Adam. Original code. Runs in SpringBoard only.
+// Realistic Dynamic 1.1.0 — an original Dynamic Island-style activity surface.
+// Author: Zidane Adam. Rootless iOS 15+ arm64. Runs in SpringBoard only.
 //
-// Activities: music (compact + expanded with progress/controls), charging, low power mode,
-// ringer switch, notifications. Spring animations, artwork-tinted equalizer, haptics.
-// Safety: crash-loop guard + emergency off switch (create /var/mobile/island_off).
+// Activities: Now Playing, notifications, charging, low power, ringer, calls,
+// screen capture and best-effort Clock timer events. Includes spring animations,
+// artwork-aware UI, optional volume HUD, haptics and an emergency disable file.
+// Safety: create /var/mobile/realisticdynamic_off to disable, then respring.
 
 #import <UIKit/UIKit.h>
+#import <CallKit/CallKit.h>
+#import <AVFoundation/AVFoundation.h>
 #import <QuartzCore/QuartzCore.h>
 #import <objc/runtime.h>
 #import <objc/message.h>
@@ -16,8 +19,8 @@
 
 #pragma mark - Preferences
 
-static NSString *const kDomain = @"com.zidaneadam.island";
-static NSString *const kPrefsNote = @"com.zidaneadam.island/prefs";
+static NSString *const kDomain = @"com.zidaneadam.realisticdynamic";
+static NSString *const kPrefsNote = @"com.zidaneadam.realisticdynamic/prefs";
 
 static id PrefObj(NSString *key) {
     CFPropertyListRef v = CFPreferencesCopyAppValue((__bridge CFStringRef)key, (__bridge CFStringRef)kDomain);
@@ -44,7 +47,7 @@ static CGFloat K(void) {
     s = MAX(0.6, MIN(1.6, s));
     return Base() * s;
 }
-static CGFloat TopY(void) { return 11.0 * Base() + PrefFloat(@"yOffset", 0); }
+static CGFloat TopY(void) { return MAX(0.0, PrefFloat(@"topOffset", 11.0)) * Base(); }
 static CGFloat Damping(void) { return MAX(0.5, MIN(0.95, PrefFloat(@"damping", 0.72))); }
 
 static void Haptic(void) {
@@ -443,6 +446,8 @@ static UILabel *MakeLabel(void) {
 - (void)applyConfig:(ISLConfig *)c animated:(BOOL)animated {
     BOOL layoutChanged = (!self.cfg || self.cfg.layout != c.layout);
     self.cfg = c;
+    self.layer.borderWidth = PrefBool(@"outline", NO) ? 0.65 : 0.0;
+    self.layer.borderColor = [UIColor colorWithWhite:1.0 alpha:0.18].CGColor;
     [self updateContentForConfig:c];
 
     CGRect target = [self frameForConfig:c];
@@ -563,9 +568,9 @@ static void Render(BOOL animated) {
     BOOL idle = NO;
     if (sTransient) {
         c = sTransient;
-    } else if (sMusicExpanded && sHasTrack) {
+    } else if (sMusicExpanded && sHasTrack && PrefBool(@"music", YES) && (sPlaying || PrefBool(@"showPaused", YES))) {
         c = MusicConfig(YES);
-    } else if (sHasTrack && sPlaying && PrefBool(@"music", YES)) {
+    } else if (sHasTrack && (sPlaying || PrefBool(@"showPaused", YES)) && PrefBool(@"music", YES)) {
         c = MusicConfig(NO);
     } else {
         c = [ISLConfig new];
@@ -574,7 +579,7 @@ static void Render(BOOL animated) {
     }
     [sView applyConfig:c animated:animated];
 
-    CGFloat targetAlpha = (idle && !PrefBool(@"alwaysShow", YES)) ? 0 : 1;
+    CGFloat targetAlpha = (idle && !PrefBool(@"alwaysShow", NO)) ? 0 : 1;
     if (fabs(sView.alpha - targetAlpha) > 0.01) {
         [UIView animateWithDuration:0.25 animations:^{ sView.alpha = targetAlpha; }];
     }
@@ -604,6 +609,64 @@ static void DismissTransient(void) {
     sTransient = nil;
     Render(YES);
 }
+
+
+#pragma mark - Call activity (public CallKit observer)
+
+static CXCallObserver *sCallObserver;
+
+@interface ISLView (RDCallObserver) <CXCallObserverDelegate>
+@end
+
+@implementation ISLView (RDCallObserver)
+- (void)callObserver:(CXCallObserver *)observer callChanged:(CXCall *)call {
+    if (!PrefBool(@"calls", YES) || !call) return;
+
+    NSString *label = call.hasConnected ? @"Call in Progress" :
+        (call.hasEnded ? @"Call Ended" :
+         (call.isOutgoing ? @"Outgoing Call" : @"Incoming Call"));
+
+    ISLConfig *c = [ISLConfig new];
+    c.layout = ISLLayoutCompact;
+    c.leadingImage = Glyph(@"phone.fill", 14 * K());
+    c.leadingTint = GreenColor();
+    c.trailingText = label;
+    c.trailingColor = UIColor.whiteColor;
+    c.compactWidth = 224;
+    ShowTransient(c, call.hasEnded ? 2.5 : 5.0);
+}
+@end
+
+
+#pragma mark - Optional volume HUD
+
+static AVAudioSession *sAudioSession;
+
+@interface ISLView (RDVolumeObserver)
+@end
+
+@implementation ISLView (RDVolumeObserver)
+- (void)observeValueForKeyPath:(NSString *)keyPath
+                      ofObject:(id)object
+                        change:(NSDictionary<NSKeyValueChangeKey, id> *)change
+                       context:(void *)context {
+    if ([keyPath isEqualToString:@"outputVolume"]) {
+        if (PrefBool(@"volume", NO)) {
+            float value = [change[NSKeyValueChangeNewKey] floatValue];
+            ISLConfig *c = [ISLConfig new];
+            c.layout = ISLLayoutCompact;
+            c.leadingImage = Glyph(@"speaker.wave.2.fill", 14 * K());
+            c.leadingTint = UIColor.whiteColor;
+            c.trailingText = [NSString stringWithFormat:@"%.0f%%", value * 100.0];
+            c.trailingColor = UIColor.whiteColor;
+            c.compactWidth = 164;
+            ShowTransient(c, 1.6);
+        }
+        return;
+    }
+    [super observeValueForKeyPath:keyPath ofObject:object change:change context:context];
+}
+@end
 
 #pragma mark - Activities
 
@@ -759,7 +822,7 @@ static void SetupIsland(void) {
     if (sWindow) return;
     CGRect b = UIScreen.mainScreen.bounds;
     sWindow = [[ISLWindow alloc] initWithFrame:b];
-    sWindow.windowLevel = UIWindowLevelAlert + 1000000;
+    sWindow.windowLevel = UIWindowLevelStatusBar + 1.0;
     sWindow.backgroundColor = UIColor.clearColor;
     UIViewController *vc = [UIViewController new];
     vc.view.backgroundColor = UIColor.clearColor;
@@ -860,6 +923,57 @@ static void SetupIsland(void) {
         Render(NO);
     }];
 
+    // Optional volume HUD. Observes the public outputVolume property without changing audio.
+    sAudioSession = [AVAudioSession sharedInstance];
+    @try {
+        [sAudioSession addObserver:sView forKeyPath:@"outputVolume"
+                           options:NSKeyValueObservingOptionNew context:NULL];
+    } @catch (NSException *exception) {
+        NSLog(@"[RealisticDynamic] Volume observation unavailable: %@", exception);
+    }
+
+    // Call state through public CallKit APIs. The tweak never answers or ends calls.
+    sCallObserver = [CXCallObserver new];
+    [sCallObserver setDelegate:(id<CXCallObserverDelegate>)sView queue:dispatch_get_main_queue()];
+
+    // Screen capture status (recording and mirroring are reported together by iOS).
+    __block BOOL wasCaptured = UIScreen.mainScreen.isCaptured;
+    [nc addObserverForName:UIScreenCapturedDidChangeNotification object:nil
+                     queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification *n) {
+        BOOL captured = UIScreen.mainScreen.isCaptured;
+        if (captured != wasCaptured && PrefBool(@"recording", YES)) {
+            ISLConfig *c = [ISLConfig new];
+            c.layout = ISLLayoutCompact;
+            c.leadingImage = Glyph(captured ? @"record.circle.fill" : @"record.circle", 14 * K());
+            c.leadingTint = captured ? OrangeColor() : UIColor.whiteColor;
+            c.trailingText = captured ? @"Screen Capture" : @"Capture Ended";
+            c.trailingColor = UIColor.whiteColor;
+            c.compactWidth = 210;
+            ShowTransient(c, 3.0);
+        }
+        wasCaptured = captured;
+    }];
+
+    // Clock timer notifications vary by iOS build; this bridge is best-effort.
+    for (NSString *timerName in @[
+        @"MTTimerManagerTimersChanged",
+        @"com.apple.mobiletimer.timerfired",
+        @"com.apple.mobiletimer.timerpaused"
+    ]) {
+        [nc addObserverForName:timerName object:nil queue:NSOperationQueue.mainQueue
+                    usingBlock:^(NSNotification *n) {
+            if (!PrefBool(@"timers", YES)) return;
+            ISLConfig *c = [ISLConfig new];
+            c.layout = ISLLayoutCompact;
+            c.leadingImage = Glyph(@"timer", 14 * K());
+            c.leadingTint = [UIColor colorWithRed:0.35 green:0.65 blue:1.0 alpha:1.0];
+            c.trailingText = @"Timer Updated";
+            c.trailingColor = UIColor.whiteColor;
+            c.compactWidth = 190;
+            ShowTransient(c, 3.0);
+        }];
+    }
+
     // Notifications + live settings
     HookNotifications();
     CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(), NULL, PrefsChanged,
@@ -869,7 +983,7 @@ static void SetupIsland(void) {
 #pragma mark - Crash-loop guard + entry point
 
 static BOOL GuardAllows(void) {
-    if (access("/var/mobile/island_off", F_OK) == 0) return NO;
+    if (access("/var/mobile/realisticdynamic_off", F_OK) == 0) return NO;
     BOOL started = PrefBool(@"_started", NO), stable = PrefBool(@"_stable", YES);
     int fails = (int)PrefFloat(@"_fails", 0);
     fails = (started && !stable) ? fails + 1 : 0;
@@ -877,7 +991,7 @@ static BOOL GuardAllows(void) {
         SetPref(@"_fails", @0);
         SetPref(@"_started", @NO);
         SetPref(@"_stable", @YES);
-        [@"" writeToFile:@"/var/mobile/island_off" atomically:YES encoding:NSUTF8StringEncoding error:nil];
+        [@"" writeToFile:@"/var/mobile/realisticdynamic_off" atomically:YES encoding:NSUTF8StringEncoding error:nil];
         return NO;
     }
     SetPref(@"_fails", @(fails));

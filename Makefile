@@ -10,7 +10,7 @@ include $(THEOS)/makefiles/common.mk
 # Main Dynamic Island Tweak
 TWEAK_NAME := RealisticDynamic
 
-RealisticDynamic_FILES := Tweak.xm
+RealisticDynamic_FILES := Tweak.m
 
 RealisticDynamic_FRAMEWORKS := UIKit QuartzCore AVFoundation CallKit
 
