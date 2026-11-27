@@ -22,3 +22,7 @@
 - Refreshes Now Playing metadata after transport commands.
 
 Limitations: Clock timer notifications remain best-effort on iOS 15 builds; this does not implement a reliable live timer countdown or a system Stopwatch feed. Flashlight KVO and private SpringBoard notification hooks require device validation.
+
+
+## 1.3.1
+- Fix preference bundle linking by linking Preferences as a private framework instead of a public SDK framework.

@@ -29,7 +29,8 @@ BUNDLE_NAME := RealisticDynamicPrefs
 
 RealisticDynamicPrefs_FILES := RootListController.m
 
-RealisticDynamicPrefs_FRAMEWORKS := UIKit Preferences
+RealisticDynamicPrefs_FRAMEWORKS := UIKit
+RealisticDynamicPrefs_PRIVATE_FRAMEWORKS := Preferences
 
 RealisticDynamicPrefs_INSTALL_PATH := /Library/PreferenceBundles
 
