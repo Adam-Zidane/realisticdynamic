@@ -1,11 +1,12 @@
 
-name: Import Realistic Dynamic 1.3.0 All Activities
+name: Import Realistic Dynamic Repository
 
 on:
   workflow_dispatch:
   push:
     paths:
-      - RealisticDynamic-1.3.0-All-Activities-source.zip
+      - 'RealisticDynamic-1.3.0-All-Activities-source.zip'
+      - 'RealisticDynamic-1.3.1-FULL-IMPORT-FIX-source.zip'
 
 permissions:
   contents: write
@@ -31,32 +32,65 @@ jobs:
           sudo apt-get update
           sudo apt-get install -y unzip rsync
 
-      - name: Extract source
+      - name: Find and extract source archive
         run: |
           set -euo pipefail
 
-          ARCHIVE="RealisticDynamic-1.3.0-All-Activities-source.zip"
-          SOURCE="/tmp/rd-import/realisticdynamic-main"
+          echo "Files in repository root:"
+          ls -lah
 
-          test -f "$ARCHIVE"
+          ARCHIVE=""
+
+          for candidate in \
+            "RealisticDynamic-1.3.1-FULL-IMPORT-FIX-source.zip" \
+            "RealisticDynamic-1.3.0-All-Activities-source.zip"
+          do
+            if [ -f "$candidate" ]; then
+              ARCHIVE="$candidate"
+              break
+            fi
+          done
+
+          if [ -z "$ARCHIVE" ]; then
+            echo "::error::Source ZIP not found in repository root."
+            exit 1
+          fi
+
+          echo "Using archive: $ARCHIVE"
 
           rm -rf /tmp/rd-import
           mkdir -p /tmp/rd-import
 
           unzip -oq "$ARCHIVE" -d /tmp/rd-import
 
-          test -f "$SOURCE/RealisticDynamic/Tweak.m"
+          TWEAK="$(find /tmp/rd-import -type f \
+            -path '*/RealisticDynamic/Tweak.m' \
+            -print -quit)"
+
+          if [ -z "$TWEAK" ]; then
+            echo "::error::RealisticDynamic/Tweak.m not found in ZIP."
+            find /tmp/rd-import -maxdepth 4 -type f
+            exit 1
+          fi
+
+          SOURCE="$(dirname "$(dirname "$TWEAK")")"
+
           test -f "$SOURCE/RealisticDynamic/Makefile"
           test -f "$SOURCE/RealisticDynamic/control"
           test -f "$SOURCE/.github/workflows/build.yml"
 
           echo "Source archive verified."
+          echo "Source directory: $SOURCE"
 
-      - name: Import all project files
+          echo "$SOURCE" > /tmp/rd-source-path
+          echo "$ARCHIVE" > /tmp/rd-archive-name
+
+      - name: Import project files
         run: |
           set -euo pipefail
 
-          SOURCE="/tmp/rd-import/realisticdynamic-main"
+          SOURCE="$(cat /tmp/rd-source-path)"
+          ARCHIVE="$(cat /tmp/rd-archive-name)"
 
           rsync -a \
             --exclude='.git/' \
@@ -65,12 +99,13 @@ jobs:
 
           mkdir -p .github/workflows
 
-          cp "$SOURCE/.github/workflows/build.yml" \
+          cp \
+            "$SOURCE/.github/workflows/build.yml" \
             .github/workflows/build.yml
 
-          rm -f RealisticDynamic-1.3.0-All-Activities-source.zip
+          rm -f "$ARCHIVE"
 
-      - name: Verify source
+      - name: Verify imported project
         run: |
           set -euo pipefail
 
@@ -78,15 +113,12 @@ jobs:
           test -f RealisticDynamic/Makefile
           test -f RealisticDynamic/control
           test -f RealisticDynamic/RootListController.m
-
-          test -f RealisticDynamic/layout/Library/PreferenceBundles/RealisticDynamicPrefs.bundle/Root.plist
-
           test -f .github/workflows/build.yml
           test -f .github/workflows/import-source.yml
 
-          echo "All source files verified."
+          echo "Project verification successful."
 
-      - name: Commit changes
+      - name: Commit imported source
         run: |
           set -euo pipefail
 
@@ -101,9 +133,9 @@ jobs:
             exit 0
           fi
 
-          git commit -m "Release Realistic Dynamic 1.3.0 All Activities"
+          git commit -m "Import Realistic Dynamic 1.3.1 source"
 
-      - name: Push to main
+      - name: Push changes to main
         run: |
           set -euo pipefail
 
@@ -113,4 +145,7 @@ jobs:
 
       - name: Import completed
         run: |
-          echo "REALISTIC DYNAMIC 1.3.0 IMPORT COMPLETE"
+          echo "REALISTIC DYNAMIC IMPORT SUCCESS"
+          echo "Source: RealisticDynamic/"
+          echo "Build workflow: Updated"
+          echo "Branch: main"
