@@ -11,6 +11,7 @@
 #import <dlfcn.h>
 #import <notify.h>
 #include <unistd.h>
+#include <string.h>
 #import <math.h>
 
 static NSString * const RD_DOMAIN = @"com.zidaneadam.realisticdynamic";
@@ -206,7 +207,7 @@ static void RDSetupObservers(void){NSNotificationCenter*nc=NSNotificationCenter.
     // Volume HUD: observe the public AVAudioSession outputVolume property; never change volume.
     AVAudioSession*session=AVAudioSession.sharedInstance; [session addObserver:(id)gIsland forKeyPath:@"outputVolume" options:NSKeyValueObservingOptionNew context:NULL];
     // Call state via public CallKit observer. No call is answered or ended by the tweak.
-    CXCallObserver*observer=[CXCallObserver new];static id callHolder;callHolder=observer;[observer setDelegate:(id<CXCallObserverDelegate>)gIsland queue:dispatch_get_main_queue()];objc_setAssociatedObject(gIsland,@selector(setDelegate:queue:),observer,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
+    CXCallObserver*observer=[CXCallObserver new];[observer setDelegate:(id<CXCallObserverDelegate>)gIsland queue:dispatch_get_main_queue()];objc_setAssociatedObject(gIsland,@selector(setDelegate:queue:),observer,OBJC_ASSOCIATION_RETAIN_NONATOMIC);
     // Ringer state is observed through the SpringBoard Darwin notification channel.
     notify_register_dispatch("com.apple.springboard.ringerstate",&gRingerToken,dispatch_get_main_queue(),^(int token){uint64_t state=0;notify_get_state(token,&state);if(gRingerState!=UINT64_MAX&&state!=gRingerState&&RDBool(@"ringer",YES)){BOOL silent=(state==0);RDActivity(silent?@"bell.slash.fill":@"bell.fill",silent?@"Silent Mode":@"Ringer On",@"",nil,silent?RDColor(@"#FB923C",1):UIColor.whiteColor,2.4);}gRingerState=state;});
     notify_get_state(gRingerToken,&gRingerState);
@@ -224,11 +225,21 @@ static void RDSetupObservers(void){NSNotificationCenter*nc=NSNotificationCenter.
 static void RDPrefsChanged(CFNotificationCenterRef c,void*o,CFStringRef n,const void*obj,CFDictionaryRef info){CFPreferencesAppSynchronize((__bridge CFStringRef)RD_DOMAIN);dispatch_async(dispatch_get_main_queue(),^{RDRender(YES);});}
 static BOOL RDGuard(void){if(access("/var/mobile/realisticdynamic_off",F_OK)==0)return NO;NSString*p=@"/var/mobile/Library/Preferences/com.zidaneadam.realisticdynamic.plist";NSDictionary*d=[NSDictionary dictionaryWithContentsOfFile:p];NSNumber*started=d[@"_started"],*stable=d[@"_stable"],*fails=d[@"_fails"];NSInteger count=([started boolValue]&&![stable boolValue])?[fails integerValue]+1:0;if(count>=3){[@"" writeToFile:@"/var/mobile/realisticdynamic_off" atomically:YES encoding:NSUTF8StringEncoding error:nil];return NO;}return YES;}
 static void RDStart(void){if(gWindow||!RDGuard())return;CGRect bounds=UIScreen.mainScreen.bounds;gWindow=[[RDWindow alloc]initWithFrame:bounds];gWindow.windowLevel=UIWindowLevelStatusBar+10;gWindow.backgroundColor=UIColor.clearColor;UIViewController*vc=[UIViewController new];vc.view.backgroundColor=UIColor.clearColor;gWindow.rootViewController=vc;gIsland=[RDIslandView new];[vc.view addSubview:gIsland];gWindow.island=gIsland;
-    __weak RDIslandView*weak=gIsland;gIsland.tap=^{if(gTransient){gTransient=nil;[gTransientTimer invalidate];RDRender(YES);return;}if(gHasTrack){gExpanded=!gExpanded;RDHaptic();RDRender(YES);if(gExpanded)RDScheduleCollapse();}};
+    gIsland.tap=^{if(gTransient){gTransient=nil;[gTransientTimer invalidate];RDRender(YES);return;}if(gHasTrack){gExpanded=!gExpanded;RDHaptic();RDRender(YES);if(gExpanded)RDScheduleCollapse();}};
     gIsland.longPress=^{if(gHasTrack&&!gExpanded){gExpanded=YES;RDHaptic();RDRender(YES);RDScheduleCollapse();}};gIsland.swipe=^{if(gTransient){gTransient=nil;[gTransientTimer invalidate];}gExpanded=NO;RDRender(YES);};
     gIsland.play=^{if(MRCommand)MRCommand(RDPlayPause,NULL);};gIsland.next=^{if(MRCommand)MRCommand(RDNext,NULL);};gIsland.previous=^{if(MRCommand)MRCommand(RDPrevious,NULL);};gIsland.seek=^(double f){if(MRSetElapsed&&gDuration>0){MRSetElapsed(f*gDuration);gElapsed=f*gDuration;gStamp=[NSDate date];}RDScheduleCollapse();};
     gWindow.hidden=NO;RDRender(NO);
-    void*h=dlopen("/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote",RTLD_LAZY);if(h){MRInfo=dlsym(h,"MRMediaRemoteGetNowPlayingInfo");MRPlaying=dlsym(h,"MRMediaRemoteGetNowPlayingApplicationIsPlaying");MRCommand=dlsym(h,"MRMediaRemoteSendCommand");MRSetElapsed=dlsym(h,"MRMediaRemoteSetElapsedTime");}
+    void*h=dlopen("/System/Library/PrivateFrameworks/MediaRemote.framework/MediaRemote",RTLD_LAZY);
+    if(h){
+        void *symbol = dlsym(h,"MRMediaRemoteGetNowPlayingInfo");
+        if(symbol) memcpy(&MRInfo,&symbol,sizeof(MRInfo));
+        symbol = dlsym(h,"MRMediaRemoteGetNowPlayingApplicationIsPlaying");
+        if(symbol) memcpy(&MRPlaying,&symbol,sizeof(MRPlaying));
+        symbol = dlsym(h,"MRMediaRemoteSendCommand");
+        if(symbol) memcpy(&MRCommand,&symbol,sizeof(MRCommand));
+        symbol = dlsym(h,"MRMediaRemoteSetElapsedTime");
+        if(symbol) memcpy(&MRSetElapsed,&symbol,sizeof(MRSetElapsed));
+    }
     [NSNotificationCenter.defaultCenter addObserverForName:@"kMRMediaRemoteNowPlayingInfoDidChangeNotification" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification*n){RDRefreshMedia();}];[NSNotificationCenter.defaultCenter addObserverForName:@"kMRMediaRemoteNowPlayingApplicationIsPlayingDidChangeNotification" object:nil queue:NSOperationQueue.mainQueue usingBlock:^(NSNotification*n){RDRefreshMedia();}];
     RDSetupObservers();RDRefreshMedia();CFNotificationCenterAddObserver(CFNotificationCenterGetDarwinNotifyCenter(),NULL,RDPrefsChanged,(__bridge CFStringRef)RD_PREFS_NOTE,NULL,CFNotificationSuspensionBehaviorCoalesce);
 }
