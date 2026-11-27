@@ -1,16 +1,16 @@
 name: Import Realistic Dynamic source
 
 on:
+  workflow_dispatch:
   push:
     paths:
       - RealisticDynamic-1.0.0-source.zip
-  workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: realisticdynamic-import-main
+  group: realisticdynamic-import
   cancel-in-progress: false
 
 jobs:
@@ -18,41 +18,40 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-      - name: Checkout latest repository
+      - name: Checkout repository
         uses: actions/checkout@v4
         with:
           fetch-depth: 0
-          persist-credentials: true
-
-      - name: Synchronize with latest main
-        run: |
-          git fetch origin main
-          git checkout main
-          git reset --hard origin/main
 
       - name: Extract source archive
         run: |
+          set -e
+
           test -f RealisticDynamic-1.0.0-source.zip
 
-          mkdir -p /tmp/realisticdynamic-source
+          rm -rf /tmp/RealisticDynamic
+          mkdir -p /tmp/RealisticDynamic
 
-          unzip -oq RealisticDynamic-1.0.0-source.zip \
-            -d /tmp/realisticdynamic-source
+          unzip -oq RealisticDynamic-1.0.0-source.zip -d /tmp/RealisticDynamic
 
-          test -f /tmp/realisticdynamic-source/RealisticDynamic/Tweak.xm
+          test -f /tmp/RealisticDynamic/RealisticDynamic/Tweak.xm
 
-      - name: Import source files
+      - name: Import Realistic Dynamic source
         run: |
+          set -e
+
           rsync -a \
             --exclude='.github/' \
-            /tmp/realisticdynamic-source/RealisticDynamic/ ./
+            /tmp/RealisticDynamic/RealisticDynamic/ ./
 
           rm -f RealisticDynamic-1.0.0-source.zip
 
-      - name: Commit imported project
+      - name: Commit and push imported source
         run: |
+          set -e
+
           git config user.name "github-actions[bot]"
-          git config user.email "41898282+users.noreply.github.com"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
           git add -A
 
@@ -62,5 +61,8 @@ jobs:
           fi
 
           git commit -m "Import Realistic Dynamic source"
+
+          git fetch origin main
+          git rebase origin/main
 
           git push origin HEAD:main
