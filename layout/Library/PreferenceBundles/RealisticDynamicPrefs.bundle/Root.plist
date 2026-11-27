@@ -1,0 +1,24 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0"><dict>
+<key>title</key><string>Realistic Dynamic</string>
+<key>defaults</key><string>com.zidaneadam.realisticdynamic</string>
+<key>items</key><array>
+<dict><key>cell</key><string>PSGroupCell</string><key>label</key><string>Core</string><key>footerText</key><string>Fluid Dynamic Island-style activity surface. Changes apply immediately.</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>enabled</string><key>label</key><string>Enabled</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>alwaysShow</string><key>label</key><string>Always Show Idle Pill</string><key>default</key><false/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>haptics</string><key>label</key><string>Haptic Feedback</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>outline</string><key>label</key><string>Subtle Glass Outline</string><key>default</key><false/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSliderCell</string><key>key</key><string>topOffset</string><key>label</key><string>Vertical Position</string><key>min</key><real>0</real><key>max</key><real>45</real><key>default</key><real>11</real><key>showValue</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSGroupCell</string><key>label</key><string>Activities</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>music</string><key>label</key><string>Now Playing</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>showPaused</string><key>label</key><string>Keep Paused Media Visible</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>charging</string><key>label</key><string>Charging Status</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>lowPower</string><key>label</key><string>Low Power Mode</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>calls</string><key>label</key><string>Call Activity (CallKit)</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>ringer</string><key>label</key><string>Ringer / Silent Mode</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>timers</string><key>label</key><string>Clock Timer Events</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>recording</string><key>label</key><string>Screen Recording Status</string><key>default</key><true/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSSwitchCell</string><key>key</key><string>volume</string><key>label</key><string>Volume HUD</string><key>default</key><false/><key>PostNotification</key><string>com.zidaneadam.realisticdynamic/prefs</string></dict>
+<dict><key>cell</key><string>PSGroupCell</string><key>footerText</key><string>Emergency disable: create /var/mobile/realisticdynamic_off over SSH/Filza, then respring. Remove that file to re-enable. Author: Zidane Adam.</string></dict>
+</array></dict></plist>

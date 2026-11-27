@@ -1,10 +1,10 @@
-Package: com.zidaneadam.island
-Name: Island
-Version: 0.2.0
+Package: com.zidaneadam.realisticdynamic
+Name: Realistic Dynamic
+Version: 1.0.0
 Architecture: iphoneos-arm64
-Description: A Dynamic Island style live pill for notch-less iPhones: music, charging, notifications, ringer, low power
+Description: A fluid, adaptive Dynamic Island experience for notch-less iPhones.
 Maintainer: Zidane Adam
 Author: Zidane Adam
 Section: Tweaks
 Depends: mobilesubstrate, preferenceloader, firmware (>= 15.0)
-Conflicts: com.nekojb.dynamicislandpill
+Conflicts: com.zidaneadam.island, com.zidaneadam.island2, com.nekojb.dynamicislandpill, com.whoops.dynamicseth

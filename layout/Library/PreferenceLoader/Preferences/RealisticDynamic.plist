@@ -1,0 +1,8 @@
+{
+  entry = {
+    bundle = RealisticDynamicPrefs;
+    cell = PSLinkCell;
+    detail = RealisticDynamicPrefs;
+    label = "Realistic Dynamic";
+  };
+}
